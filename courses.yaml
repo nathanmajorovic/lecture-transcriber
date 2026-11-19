@@ -1,0 +1,90 @@
+# Vakprofielen. Kies het vak in de app of met --course <naam>.
+# language: nl / en / auto   (auto = detectie op 25/50/75% van de opname)
+# model: leeg laten = automatisch (large-v3-turbo op GPU, small op CPU)
+# jargon: termen die vooraan in de initial_prompt komen (maximaal ±224 tokens in totaal)
+
+wiskunde-ai:
+  title: Wiskunde voor AI
+  language: nl
+  model:
+  intro: Les Wiskunde voor AI, prof Roel Van Beeumen.
+  jargon:
+    - Krylov-deelruimte
+    - Arnoldi
+    - Lanczos
+    - GMRES
+    - MINRES
+    - conjugate gradient
+    - Hessenberg-matrix
+    - Galerkin
+    - Petrov-Galerkin
+    - Ritz-waarden
+    - residu
+    - projectiemethoden
+    - preconditioner
+    - restart
+    - matrixfuncties
+    - eigenwaarden
+    - orthogonalisatie
+    - Gram-Schmidt
+
+ml:
+  title: Machine Learning
+  language: en
+  model:
+  intro: Machine learning lecture.
+  jargon:
+    - support vector machine
+    - SVM
+    - kernel trick
+    - Lagrange multipliers
+    - KKT conditions
+    - hinge loss
+    - soft margin
+    - ReLU
+    - pooling
+    - convolutional neural network
+    - backpropagation
+    - gradient descent
+    - regularization
+    - cross-entropy
+
+advanced-data-mining-and-neural-networks:
+  title: Advanced Data Mining and Neural Networks
+  language: en
+  model:
+  intro: Lecture Advanced Data Mining and Neural Networks, KU Leuven, prof. Johan Suykens.
+  jargon:
+    - Suykens
+    - LS-SVM
+    - SVM
+    - kernel trick
+    - Mercer
+    - KKT conditions
+    - Lagrange multipliers
+    - Vapnik
+    - VC dimension
+    - regularization
+    - multilayer perceptron
+    - backpropagation
+    - Levenberg-Marquardt
+    - Hessian
+    - Jacobian
+    - RBF network
+    - Hopfield network
+    - Boltzmann machine
+    - Kohonen
+    - self-organizing map
+    - kernel PCA
+    - PCA
+    - autoencoder
+    - CNN
+    - ReLU
+    - pooling
+    - LSTM
+    - RNN
+    - GAN
+    - VAE
+    - Bayesian inference
+    - overfitting
+    - cross-validation

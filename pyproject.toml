@@ -1,0 +1,29 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "lecture-transcriber"
+version = "0.1.0"
+description = "Lesopnames lokaal omzetten naar een transcript met tijdstempels en slide-indeling"
+requires-python = ">=3.10"
+dependencies = [
+    "faster-whisper>=1.1",
+    "nvidia-cublas-cu12; sys_platform == 'win32'",
+    "nvidia-cudnn-cu12==9.*; sys_platform == 'win32'",
+    "numpy",
+    "psutil",
+    "PyYAML",
+    "pymupdf",
+    "opencv-python-headless",
+    "tkinterdnd2",
+]
+
+[project.scripts]
+lecture-transcribe = "lecture_transcriber.cli:main"
+
+[project.gui-scripts]
+lecture-transcriber-gui = "lecture_transcriber.gui:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
