@@ -5,7 +5,7 @@ own PC. For video recordings, the app also detects slide changes and, if you add
 links them to the actual slide numbers. Everything runs offline: no APIs, and your audio never
 leaves your computer.
 
-The transcript is meant to be handed to an LLM afterwards, together with the slides, to get a
+The transcript is meant to be handed to an LLM **afterwards**, together with the slides, to get a
 slide-by-slide summary. `prompt_template.md` contains a ready-made instruction for that.
 
 **Why?** Uploading a recording straight to a chat LLM and asking it to transcribe costs a lot of
