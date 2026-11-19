@@ -1,22 +1,24 @@
 # Lecture Transcriber
 
-Zet lesopnames (video **of** enkel audio) lokaal om naar een transcript met tijdstempels.
-Bij video zoekt de app ook de slidewissels en koppelt ze, als je de slides-PDF erbij geeft,
-aan de echte slidenummers. Alles draait offline op je eigen pc: geen API's, de audio gaat
-nergens naartoe.
+Turn lecture recordings (video **or** audio only) into a timestamped transcript, locally on your
+own PC. For video recordings, the app also detects slide changes and, if you add the slides PDF,
+links them to the actual slide numbers. Everything runs offline: no APIs, and your audio never
+leaves your computer.
 
-Het transcript is bedoeld om daarna zelf, samen met de slides, aan een LLM te geven voor een
-slide-by-slide samenvatting. `prompt_template.md` bevat daarvoor een kant-en-klare instructie.
+The transcript is meant to be handed to an LLM afterwards, together with the slides, to get a
+slide-by-slide summary. `prompt_template.md` contains a ready-made instruction for that.
 
+**Why?** Uploading a recording straight to a chat LLM and asking it to transcribe costs a lot of
+credits. This tool does the heavy lifting (speech to text) locally and for free, on your own GPU or
+CPU. The LLM then only gets text, which is far cheaper.
 
-**Waarom?** Een opname rechtstreeks aan een chat-LLM geven om ze te laten transcriberen kost veel
-credits. Deze tool doet het zware werk (spraak naar tekst) lokaal en gratis, op je eigen GPU of CPU.
-De LLM krijgt daarna alleen nog tekst, en dat is veel goedkoper.
+> Recordings, slides and transcripts are **not** part of this repo: they are excluded through
+> `.gitignore`. Everything stays on your own PC.
 
-> Opnames, slides en transcripten staan **niet** in deze repo: ze worden uitgesloten via
-> `.gitignore`. Alles blijft op je eigen pc.
+> **Note on the interface language:** the app's interface is in Dutch. Where this README mentions
+> a button or setting, the Dutch label is shown in *italics*, with a translation where useful.
 
-## Snelstart
+## Quick start
 
 ```
 git clone https://github.com/nathanmajorovic/lecture-transcriber.git
@@ -24,232 +26,239 @@ cd lecture-transcriber
 install.bat
 ```
 
-Daarna start je de app via de snelkoppeling **Lecture Transcriber** op je bureaublad. Sleep een
-opname en de slides-PDF erin, kies het vak en klik op **Start**. Hieronder staat alles in detail.
+Then start the app via the **Lecture Transcriber** shortcut on your desktop. Drag in a recording
+and its slides PDF, pick the course and click **Start**. Everything is explained in detail below.
 
 ---
 
-## 1. Installatie (eenmalig)
+## 1. Installation (one-time)
 
-Nodig: Windows 10/11, ±5 GB vrije schijfruimte en internet (alleen voor de installatie).
-Een NVIDIA-kaart is niet verplicht, maar wel ±5× sneller.
+Requirements: Windows 10/11, ±5 GB free disk space, and an internet connection (for installation
+only). An NVIDIA GPU is not required, but makes it roughly 5× faster.
 
-1. **Python 3.10 of nieuwer**, als je dat nog niet hebt:
+1. **Python 3.10 or newer**, if you don't have it yet:
    ```
    winget install Python.Python.3.12
    ```
-2. **Dubbelklik op `install.bat`.** Dat doet de rest:
-   - installeert **ffmpeg** via winget (`winget install Gyan.FFmpeg`) als het ontbreekt;
-   - maakt een virtuele omgeving in `%USERPROFILE%\.venvs\lecture-transcriber`
-     (bewust **buiten OneDrive**, want die bevat ±3 GB aan bibliotheken);
-   - installeert de Python-pakketten, inclusief de **CUDA-bibliotheken** cuBLAS en cuDNN
-     (`nvidia-cublas-cu12`, `nvidia-cudnn-cu12`) voor de GPU. Een aparte CUDA-installatie of
-     PATH-aanpassing is niet nodig;
-   - downloadt de modellen (`large-v3-turbo` voor de GPU, `small` als reserve voor de CPU);
-   - test of de GPU werkt (`tests\cuda_check.py`);
-   - zet een snelkoppeling **Lecture Transcriber** op het bureaublad en in het Startmenu.
+2. **Double-click `install.bat`.** It takes care of the rest:
+   - installs **ffmpeg** via winget (`winget install Gyan.FFmpeg`) if it is missing;
+   - creates a virtual environment in `%USERPROFILE%\.venvs\lecture-transcriber`
+     (deliberately **outside OneDrive**, since it holds ±3 GB of libraries);
+   - installs the Python packages, including the **CUDA libraries** cuBLAS and cuDNN
+     (`nvidia-cublas-cu12`, `nvidia-cudnn-cu12`) for the GPU. No separate CUDA install or PATH
+     changes are needed;
+   - downloads the models (`large-v3-turbo` for the GPU, `small` as a CPU fallback);
+   - checks that the GPU works (`tests\cuda_check.py`);
+   - puts a **Lecture Transcriber** shortcut on your desktop and in the Start menu.
 
-Daarna werkt alles offline.
+After that, everything works offline.
 
-## 2. Gebruik
+## 2. Usage
 
-### Met het venster
-Start via de snelkoppeling of `start_app.bat`.
+### With the app window
+Start it via the shortcut or `start_app.bat`.
 
-1. **Sleep** opnames naar de wachtrij, of klik op *Opnames toevoegen*.
-   Bestanden die alleen in "DEEL 1" / "DEEL 2" verschillen, worden automatisch één les,
-   met een scheiding `=== DEEL 2 ===` in het transcript.
-2. Het **vak** wordt geraden uit de map (bv. `...\MACHINE LEARNING\...` → `ml`).
-   Klopt het niet, selecteer dan de les en kies het vak in de keuzelijst.
-3. **Slides-PDF** (optioneel): sleep de PDF erbij, of selecteer de les en klik op
-   *Slides-PDF koppelen*.
-4. Klik op **Start**. Bovenaan zie je hoeveel RAM en VRAM er vrij is. Per les zie je de
-   voortgang en de resterende tijd. Na ±1 minuut audio verschijnt een preview met de taal en
-   de eerste regels: zo zie je meteen of het de juiste opname en taal is.
-5. **Pauzeer** of **Annuleer** kan altijd. Na annuleren, een crash of het uitzetten van de pc
-   gaat de volgende *Start* verder vanaf het laatst afgewerkte stuk.
-6. Dubbelklik op een afgewerkte les om de uitvoermap te openen.
+1. **Drag** recordings into the queue (*Wachtrij*), or click *Opnames toevoegen* (add recordings).
+   You can add several at once; they are processed one after the other.
+   Files that only differ in "DEEL 1" / "DEEL 2" (part 1 / part 2) automatically become one
+   lecture, with a `=== DEEL 2 ===` separator in the transcript. To keep them separate, tick
+   *DEEL 1/2 niet samenvoegen*.
+2. The **course** (*Vak*) is guessed from the folder name (e.g. `...\MACHINE LEARNING\...` → `ml`).
+   If it's wrong, select the lecture and pick the course from the dropdown.
+3. **Slides PDF** (optional): drag the PDF in, or select the lecture and click
+   *Slides-PDF koppelen* (link slides PDF).
+4. Click **Start**. The top bar shows how much RAM and VRAM is free. Each lecture shows its
+   progress and remaining time. After ±1 minute of audio, a preview with the detected language and
+   the first lines appears, so you can check right away that it's the right recording and language.
+5. You can always pause (*Pauzeer*) or cancel (*Annuleer*). After cancelling, a crash or the PC
+   shutting down, the next *Start* resumes from the last completed chunk.
+6. Double-click a finished lecture to open its output folder.
 
-Onder *Geavanceerde instellingen*: model, taal, beam_size, threads, stukgrootte,
-slidegebied, alleen CPU, en **Enkel fragment** (bv. start `20:00`, duur `2:00`) om snel te
-testen of alles goed staat.
+Under *Geavanceerde instellingen* (advanced settings): model, language, beam size, threads, chunk
+size, slide region, CPU only, and **Enkel fragment** (clip only, e.g. start `20:00`, duration
+`2:00`) to quickly test whether everything is set up correctly.
 
-### Met de commandoregel
+### From the command line
 ```
-lecture-transcribe.bat opname.mp4 --course ml --slides "Rule learning.pdf"
-lecture-transcribe.bat "les 7 DEEL_1.m4a" "les 7 DEEL_2.m4a" --course wiskunde-ai
-lecture-transcribe.bat opname.mp4 --course ml --clip 20:00 2:00      (test op 2 minuten)
+lecture-transcribe.bat recording.mp4 --course ml --slides "Rule learning.pdf"
+lecture-transcribe.bat "lecture 7 DEEL_1.m4a" "lecture 7 DEEL_2.m4a" --course wiskunde-ai
+lecture-transcribe.bat recording.mp4 --course ml --clip 20:00 2:00      (test on 2 minutes)
 lecture-transcribe.bat --list-courses
 lecture-transcribe.bat --help
 ```
-Je kan opnames ook gewoon **op `lecture-transcribe.bat` slepen** (dan zonder vak; de taal wordt
-dan automatisch gedetecteerd).
+You can also simply **drag recordings onto `lecture-transcribe.bat`** (no course profile in that
+case; the language is detected automatically).
 
-| Optie | Betekenis |
+| Option | Meaning |
 |---|---|
-| `--course`, `-c` | vakprofiel uit `courses.yaml` |
-| `--slides` | slides-PDF van deze les |
-| `--language`, `-l` | `nl`, `en`, … of `auto` (standaard: uit het vakprofiel) |
-| `--model`, `-m` | `large-v3-turbo` (standaard op GPU), `large-v3`, `medium`, `small` |
-| `--beam` | beam_size (standaard 5 op GPU, 1 op CPU) |
-| `--cpu` | GPU niet gebruiken |
-| `--chunk-min` | stukgrootte in minuten (standaard 20) |
-| `--threads` | CPU-threads (standaard de helft van de kernen) |
-| `--out` | vaste uitvoermap (standaard: naast de opname) |
-| `--separate` | DEEL 1/2 niet samenvoegen |
-| `--clip START DUUR` | alleen een stuk verwerken (om te testen) |
-| `--crop x,y,b,h` | slidegebied in het beeld zelf instellen |
-| `--no-slides` | geen slidedetectie |
-| `--force` | opnieuw verwerken, ook als de les al klaar is |
-| `--yes`, `-y` | niet vragen bij weinig geheugen |
+| `--course`, `-c` | course profile from `courses.yaml` |
+| `--slides` | slides PDF for this lecture |
+| `--language`, `-l` | `nl`, `en`, … or `auto` (default: from the course profile) |
+| `--model`, `-m` | `large-v3-turbo` (default on GPU), `large-v3`, `medium`, `small` |
+| `--beam` | beam size (default 5 on GPU, 1 on CPU) |
+| `--cpu` | don't use the GPU |
+| `--chunk-min` | chunk length in minutes (default 20) |
+| `--threads` | CPU threads (default: half of the cores) |
+| `--out` | fixed output folder (default: next to the recording) |
+| `--separate` | don't merge DEEL 1/2 |
+| `--clip START DURATION` | process only a fragment (for testing) |
+| `--crop x,y,w,h` | set the slide region in the video frame manually |
+| `--no-slides` | skip slide detection |
+| `--force` | reprocess, even if the lecture is already done |
+| `--yes`, `-y` | don't ask when memory is low |
 
-## 3. Wat je krijgt
+## 3. What you get
 
-Een map `<lesnaam>_transcript\`, naast de opname of in je vaste uitvoermap:
+A folder `<lecture name>_transcript\`, either next to the recording (*Naast de opname*, the
+default: in the same folder as the recording file) or in a fixed output folder (*In vaste map*):
 
-| Bestand | Inhoud |
+| File | Contents |
 |---|---|
-| `transcript.txt` | **hoofdproduct**: regels `[mm:ss] tekst` (`[h:mm:ss]` bij opnames boven 1 uur) |
-| `transcript_per_slide.md` | (video) hetzelfde transcript met kopjes `=== Slide 7 (12:34 – 18:02, 5 min 28 s) ===`, en bovenaan de tijd per slide (⭐ = langst besproken) |
-| `slides_timeline.csv` | (video) slidenummer, start, einde, duur, zekerheid; opent meteen in Excel |
-| `slides\` | schermafbeeldingen: zonder PDF van elke slide, met PDF alleen van de onzekere |
-| `info.txt` | model, taal, prompt, verwerkingstijd, waarschuwingen |
-| `prompt_template.md` | instructie om samen met het transcript en de slides naar een LLM te sturen |
-| `logs\` | een logbestand per run |
+| `transcript.txt` | **main output**: lines `[mm:ss] text` (`[h:mm:ss]` for recordings over 1 hour) |
+| `transcript_per_slide.md` | (video) the same transcript with headings like `=== Slide 7 (12:34 – 18:02, 5 min 28 s) ===`, and at the top the time spent per slide (⭐ = discussed longest) |
+| `slides_timeline.csv` | (video) slide number, start, end, duration, confidence; opens directly in Excel |
+| `slides\` | screenshots: of every slide without a PDF, only of the uncertain ones with a PDF |
+| `info.txt` | model, language, prompt, processing time, warnings |
+| `prompt_template.md` | instruction to send to an LLM together with the transcript and slides |
+| `logs\` | one log file per run |
 
-**Zekerheid van de slidenummers:**
-- `Slide 7`: zeker.
-- `Slide 7?`: waarschijnlijk (bijna-identieke pagina's, bv. dezelfde tabel met een ander rijtje gemarkeerd).
-- `Slide ?`: onzeker (geen goede overeenkomst, bv. een demo in de browser of het bord). Bekijk dan de schermafbeelding.
+**Confidence of the slide numbers:**
+- `Slide 7`: certain.
+- `Slide 7?`: probable (near-identical pages, e.g. the same table with a different row highlighted).
+- `Slide ?`: uncertain (no good match, e.g. a browser demo or the blackboard). Check the screenshot.
 
-Als het beeld nooit stabiel is (bv. een camera die de zaal filmt), meldt de app dat de
-slidedetectie niet bruikbaar was en krijg je gewoon het transcript.
+If the image is never stable (e.g. a camera filming the lecture hall), the app reports that slide
+detection wasn't usable and you simply get the transcript.
 
-## 4. Zo haal je er het meeste uit
+## 4. Getting the most out of it
 
-### Voor je start
-1. **Maak per vak een profiel** (*+ Nieuw vak*) met de juiste taal en een jargonlijst: namen van
-   personen en methodes (Arnoldi, Levenberg-Marquardt), afkortingen (GMRES, LS-SVM) en vaktermen.
-   Lees na de eerste les het transcript snel door, en voeg woorden die fout geschreven werden toe
-   aan het profiel.
-2. **Koppel altijd de slides-PDF.** Dat helpt dubbel: termen uit de PDF gaan mee in de prompt van
-   Whisper (betere spelling van jargon), en bij video krijg je de echte slidenummers.
-3. **Zet de taal vast** in het vakprofiel. Detecteren is minder betrouwbaar dan vastzetten.
-4. **Test een nieuw vak eerst kort**: *Geavanceerde instellingen → Enkel fragment* (bv. start
-   `20:00`, duur `2:00`). Zo zie je binnen een minuut of taal, jargon en slidedetectie kloppen.
+### Before you start
+1. **Create a profile per course** (*+ Nieuw vak*, new course) with the right language and a
+   jargon list: names of people and methods (Arnoldi, Levenberg-Marquardt), acronyms (GMRES,
+   LS-SVM) and technical terms. After the first lecture, skim the transcript and add any words
+   that were misspelled to the profile.
+2. **Always link the slides PDF.** It helps twice: terms from the PDF are added to Whisper's
+   prompt (better spelling of jargon), and for video you get the real slide numbers.
+3. **Fix the language** in the course profile. Detection is less reliable than a fixed language.
+4. **Test a new course with a short clip first**: *Geavanceerde instellingen → Enkel fragment*
+   (e.g. start `20:00`, duration `2:00`). Within a minute you'll see whether language, jargon and
+   slide detection are right.
 
-### Tijdens het verwerken
-- **Lader erin.** Op batterij vertraagt de GPU sterk.
-- **Hou minstens 3 GB RAM vrij.** Sluit browsers, IDE's en andere zware apps (dat is het grootste
-  risico, niet de GPU).
-- **Zet meerdere lessen in de wachtrij** en laat ze lopen. Geef elke les het juiste vak en de
-  juiste PDF: selecteer de rij, kies het *Vak* en klik op *Slides-PDF koppelen*.
-- **Kijk na ±1 minuut naar de preview** in het verloop: klopt de taal, en is het de juiste opname?
-- **Klep dicht laten werken?** Kan, als Windows dan niets doet: *Settings → System → Power &
-  battery → Lid & power button controls → "Closing the lid" = Do nothing* (Plugged in), en bij
-  *Screen, sleep & hibernate timeouts* de slaapstand op *Never* (Plugged in). Zet de laptop op een
-  harde, vlakke ondergrond.
-- **Gestopt of gecrasht?** Gewoon opnieuw *Start*: afgewerkte lessen worden overgeslagen, en een
-  half afgewerkte les gaat verder vanaf het laatste stuk.
+### While processing
+- **Keep the charger plugged in.** On battery, the GPU slows down considerably.
+- **Keep at least 3 GB of RAM free.** Close browsers, IDEs and other heavy apps (running out of
+  RAM is the biggest risk, not the GPU).
+- **Queue several lectures** and let them run. Give each lecture the right course and PDF: select
+  the row, choose the *Vak* and click *Slides-PDF koppelen*.
+- **Check the preview after ±1 minute** in the log (*Verloop*): is the language right, and is it
+  the right recording?
+- **Running with the lid closed?** That works if Windows does nothing when you close it:
+  *Settings → System → Power & battery → Lid & power button controls → "Closing the lid will make
+  my PC" = Do nothing* (Plugged in), and under *Screen, sleep & hibernate timeouts* set sleep to
+  *Never* (Plugged in). Put the laptop on a hard, flat surface.
+- **Stopped or crashed?** Just press *Start* again: finished lectures are skipped, and a
+  half-finished lecture resumes from its last completed chunk.
 
-### Na het verwerken: samenvatting met een LLM
-1. Open de uitvoermap (dubbelklik op de les, of *Open uitvoermap*).
-2. Upload naar je LLM:
-   - `transcript_per_slide.md` (video), of `transcript.txt` (enkel audio);
-   - de slides-PDF en/of de cursusnota's.
-3. Plak de instructie uit `prompt_template.md` erbij en vraag om een slide-by-slide samenvatting.
-4. Tips voor een betere samenvatting:
-   - Slides met ⭐ zijn het langst besproken: meestal de belangrijkste stof.
-   - Vraag de LLM om examentips expliciet te markeren ("exam", "important", "dit moet je kennen").
-   - Vreemde woorden zijn bijna altijd verkeerd verstaan jargon: de instructie vraagt om ze met de
-     slides te controleren.
-   - Bij `Slide ?` (onzeker): bekijk de schermafbeelding in `slides\` (vaak bordwerk of een demo).
-   - Is de les te lang voor één keer? Geef het transcript dan per deel (bv. per uur).
+### After processing: summarizing with an LLM
+1. Open the output folder (double-click the lecture, or *Open uitvoermap*).
+2. Upload to your LLM:
+   - `transcript_per_slide.md` (video), or `transcript.txt` (audio only);
+   - the slides PDF and/or the course notes.
+3. Paste the instruction from `prompt_template.md` and ask for a slide-by-slide summary.
+4. Tips for a better summary:
+   - Slides marked ⭐ were discussed longest: usually the most important material.
+   - Ask the LLM to explicitly flag exam hints ("exam", "important", "you need to know this").
+   - Odd words are almost always misheard jargon: the instruction asks the LLM to check them
+     against the slides.
+   - For `Slide ?` (uncertain): look at the screenshot in `slides\` (often blackboard work or a
+     demo).
+   - Lecture too long for one go? Give the transcript in parts (e.g. per hour).
 
-## 5. Een vak toevoegen
+## 5. Adding a course
 
-**In de app:** klik naast de keuzelijst *Vak* op **+ Nieuw vak** (of **Bewerk** voor het gekozen
-vak). Vul de naam, de taal, een korte intro en de jargontermen in (één per regel) en klik op
-*Opslaan*. De app schrijft het vak naar `courses.yaml`.
+**In the app:** next to the *Vak* dropdown, click **+ Nieuw vak** (new course), or **Bewerk**
+(edit) for the selected course. Fill in the name (*Naam van het vak*), the language (*Taal*), a
+short intro (*Korte intro*) and the jargon terms (*Jargon*, one per line), then click *Opslaan*
+(save). The app writes the course to `courses.yaml`.
 
-**Met de hand:** open `courses.yaml` in Kladblok en kopieer een bestaand blok:
+**By hand:** open `courses.yaml` in Notepad and copy an existing block:
 
 ```yaml
-statistiek:
-  title: Statistiek          # ook gebruikt om het vak te raden uit de mapnaam
-  language: nl               # nl, en, … of auto
-  model:                     # leeg = automatisch
-  intro: "Les Statistiek, prof X."
+statistics:
+  title: Statistics          # also used to guess the course from the folder name
+  language: en               # nl, en, … or auto
+  model:                     # empty = automatic
+  intro: "Statistics lecture, prof X."
   jargon:
-    - betrouwbaarheidsinterval
-    - nulhypothese
-    - p-waarde
+    - confidence interval
+    - null hypothesis
+    - p-value
 ```
 
-- **Let op de inspringing**: twee spaties, en een streepje voor elke term.
-- Zet in `jargon` de termen die Whisper verkeerd spelt: namen (Arnoldi, Lanczos), afkortingen
-  (GMRES, KKT) en vakjargon. Ze gaan mee in de *initial prompt* (max. ±224 tokens). Eerst komt
-  het vakprofiel, daarna de beste termen uit de slides-PDF.
-- **Taal vastzetten** werkt beter dan detecteren. Gebruik `auto` alleen als het vak in beide
-  talen gegeven wordt. De detectie gebeurt dan op 25%, 50% en 75% van de opname, niet op het
-  (vaak stille) begin.
+- **Mind the indentation**: two spaces, and a dash before each term.
+- Put the terms Whisper gets wrong in `jargon`: names (Arnoldi, Lanczos), acronyms (GMRES, KKT)
+  and technical vocabulary. They go into the *initial prompt* (max. ±224 tokens). The course
+  profile comes first, then the best terms from the slides PDF.
+- **Fixing the language** works better than detection. Only use `auto` if the course is taught
+  in both languages. Detection then runs at 25%, 50% and 75% of the recording, not at the
+  (often silent) start.
 
-## 6. Snelheid en systeem
+## 6. Speed and system
 
-Gemeten op een RTX 3050 Ti Laptop (4 GB), op batterij:
+Measured on an RTX 3050 Ti Laptop GPU (4 GB), on battery:
 
-| Opname | Tijd |
+| Recording | Time |
 |---|---|
-| ML-les, video 46 min, met slides-PDF | 6 min 54 s (3 min 47 s transcriptie + slides) |
-| Audio 52 min | ±5 min |
+| ML lecture, 46 min video, with slides PDF | 6 min 54 s (3 min 47 s transcription + slides) |
+| 52 min audio | ±5 min |
 
-Ruwweg 1 minuut per 10 minuten audio, plus ±3 min per uur video voor de slides.
-Met de lader in gaat het sneller. Alleen op de CPU (`small`): ±3× realtime, en merkbaar minder
-nauwkeurig.
+Roughly 1 minute per 10 minutes of audio, plus ±3 min per hour of video for the slides.
+It's faster with the charger plugged in. CPU only (`small`): ±3× real time, and noticeably less
+accurate.
 
-De app probeert je pc bruikbaar te houden:
-- lage prioriteit (BELOW_NORMAL), ook voor ffmpeg;
-- standaard de helft van de CPU-kernen;
-- de audio wordt per stuk ingelezen, de video nooit volledig;
-- één les tegelijk, en nooit twee modellen tegelijk geladen;
-- bij minder dan 3 GB vrij RAM vraagt de app eerst om apps te sluiten, en daarna gebruikt
-  ze kleinere stukken;
-- bij een tekort aan GPU-geheugen valt de app automatisch terug: eerst `large-v3-turbo`,
-  dan beam 1, dan CPU;
-- tijdelijke bestanden staan in `%USERPROFILE%\.lecture-transcriber\work\` (buiten OneDrive)
-  en worden achteraf opgeruimd.
+The app tries to keep your PC usable:
+- low priority (BELOW_NORMAL), for ffmpeg too;
+- by default half of the CPU cores;
+- audio is read chunk by chunk, video is never loaded in full;
+- one lecture at a time, and never two models loaded at once;
+- with less than 3 GB of free RAM, the app first asks you to close apps, and then uses smaller
+  chunks;
+- on a GPU out-of-memory error, it falls back automatically: first `large-v3-turbo`, then
+  beam 1, then CPU;
+- temporary files live in `%USERPROFILE%\.lecture-transcriber\work\` (outside OneDrive) and are
+  cleaned up afterwards.
 
-## 7. Veelvoorkomende problemen
+## 7. Troubleshooting
 
-| Probleem | Oplossing |
+| Problem | Solution |
 |---|---|
-| "ffmpeg niet gevonden" | `winget install Gyan.FFmpeg`, daarna de app opnieuw starten |
-| "CUDA werkt niet, ik gebruik de CPU" | NVIDIA-driver bijwerken (GeForce Experience / nvidia.com). Daarna `install.bat` opnieuw draaien; de laatste stap test de GPU |
-| "Weinig geheugen" | Apps in het systeemvak afsluiten (rechtermuisknop → *Afsluiten*; het kruisje sluit ze vaak niet echt), of de pc herstarten. Uitzetten via *Taakbeheer → Opstart-apps* werkt pas na een herstart |
-| Verkeerde taal of onzin in de preview | Annuleer, en kies de juiste taal (vakprofiel of *Geavanceerd → Taal*). Nederlands forceren op een Engelse les geeft onzin, en omgekeerd |
-| Vreemde woorden in het transcript ("armoldi", "kriel of") | Normaal: dat is verkeerd verstaan jargon. Zet de term in `jargon` van het vak; de LLM-instructie vraagt ook om het met de slides te controleren |
-| Slides allemaal "onzeker" | Controleer of de PDF bij deze les hoort. Staat de slide maar in een deel van het beeld en wordt dat niet gevonden: stel het slidegebied zelf in (`--crop x,y,b,h` in pixels van de video) |
-| "is al verwerkt" | De les is klaar. Gebruik `--force` (of verwijder de uitvoermap) om opnieuw te beginnen |
-| Proces gestopt (crash, pc uit) | Start gewoon opnieuw: het gaat verder vanaf het laatst afgewerkte stuk |
-| Slepen werkt niet | Gebruik *Opnames toevoegen …*, of draai `install.bat` opnieuw (pakket `tkinterdnd2`) |
+| "ffmpeg niet gevonden" (ffmpeg not found) | `winget install Gyan.FFmpeg`, then restart the app |
+| "CUDA werkt niet, ik gebruik de CPU" (CUDA doesn't work, using CPU) | Update your NVIDIA driver (GeForce Experience / nvidia.com), then rerun `install.bat`; its last step tests the GPU |
+| "Weinig geheugen" (low memory) | Quit apps from the system tray (right-click → *Quit*; the X often doesn't really close them), or restart the PC. Disabling apps in *Task Manager → Startup apps* only takes effect after a restart |
+| Wrong language or gibberish in the preview | Cancel and pick the right language (course profile or *Geavanceerd → Taal*). Forcing Dutch on an English lecture produces gibberish, and vice versa |
+| Odd words in the transcript ("armoldi", "kriel of") | Normal: that's misheard jargon. Add the term to the course's `jargon`; the LLM instruction also asks it to check against the slides |
+| All slides "uncertain" | Check that the PDF belongs to this lecture. If the slide only fills part of the frame and isn't found, set the slide region yourself (`--crop x,y,w,h` in video pixels) |
+| "is al verwerkt" (already processed) | The lecture is done. Use `--force` (or delete the output folder) to start over |
+| Process stopped (crash, PC off) | Just start again: it resumes from the last completed chunk |
+| Drag and drop doesn't work | Use *Opnames toevoegen …*, or rerun `install.bat` (package `tkinterdnd2`) |
 
-## 8. Structuur
+## 8. Project structure
 
 ```
 lecture-transcriber/
 ├─ install.bat, start_app.bat, lecture-transcribe.bat, make_shortcut.ps1
-├─ courses.yaml                 vakprofielen
+├─ courses.yaml                 course profiles
 ├─ requirements.txt, pyproject.toml
 ├─ src/lecture_transcriber/
-│  ├─ system.py      ffmpeg vinden, prioriteit, RAM/VRAM/schijf/batterij
-│  ├─ audio.py       video of audio?, omzetten naar 16 kHz mono WAV, per stuk inlezen
-│  ├─ device.py      GPU/CPU-keuze, CUDA-bibliotheken
-│  ├─ config.py      vakprofielen en instellingen
-│  ├─ prompt.py      initial_prompt (vakprofiel + termen uit de PDF)
-│  ├─ transcribe.py  faster-whisper, fallback bij geheugentekort, taaldetectie, pauze
-│  ├─ job.py         één les verwerken, hervatten, uitvoer
+│  ├─ system.py      find ffmpeg, priority, RAM/VRAM/disk/battery
+│  ├─ audio.py       video or audio?, convert to 16 kHz mono WAV, read chunk by chunk
+│  ├─ device.py      GPU/CPU choice, CUDA libraries
+│  ├─ config.py      course profiles and settings
+│  ├─ prompt.py      initial prompt (course profile + terms from the PDF)
+│  ├─ transcribe.py  faster-whisper, out-of-memory fallback, language detection, pause
+│  ├─ job.py         process one lecture, resume, output
 │  ├─ slides/        frames.py, detect.py, match.py
-│  ├─ output.py      alle uitvoerbestanden
+│  ├─ output.py      all output files
 │  ├─ cli.py, gui.py
 └─ tests/            cuda_check.py, slides_debug.py, gui_smoke.py, gui_run.py
 ```
