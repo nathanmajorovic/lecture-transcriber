@@ -68,9 +68,18 @@ def find_ffmpeg() -> dict[str, str]:
                 rf"%LOCALAPPDATA%\Microsoft\WinGet\Packages\Gyan.FFmpeg*\*\bin\{exe}.exe")
             hits = glob.glob(pattern)
             p = hits[0] if hits else None
+        if not p and sys.platform != "win32":
+            # Een app die vanuit Finder start, ziet het PATH van Homebrew soms niet
+            for d in ("/opt/homebrew/bin", "/usr/local/bin", "/usr/bin"):
+                cand = Path(d) / exe
+                if cand.is_file():
+                    p = str(cand)
+                    break
         if not p:
+            how = {"win32": "winget install Gyan.FFmpeg",
+                   "darwin": "brew install ffmpeg"}.get(sys.platform, "sudo apt install ffmpeg")
             raise FriendlyError(
-                f"{exe} niet gevonden. Installeer het met:  winget install Gyan.FFmpeg\n"
+                f"{exe} niet gevonden. Installeer het met:  {how}\n"
                 "en start de app daarna opnieuw.")
         found[exe] = p
     _FFMPEG = found
@@ -96,6 +105,17 @@ def subprocess_kwargs() -> dict:
     if sys.platform == "win32":
         return {"creationflags": subprocess.BELOW_NORMAL_PRIORITY_CLASS | subprocess.CREATE_NO_WINDOW}
     return {"preexec_fn": lambda: os.nice(10)}  # pragma: no cover
+
+
+def open_folder(path: Path | str) -> None:
+    """Open een map in Verkenner (Windows), Finder (macOS) of de bestandsbeheerder (Linux)."""
+    path = str(path)
+    if sys.platform == "win32":
+        os.startfile(path)  # noqa: S606
+    elif sys.platform == "darwin":
+        subprocess.Popen(["open", path])
+    else:
+        subprocess.Popen(["xdg-open", path])
 
 
 def default_threads() -> int:
@@ -151,6 +171,9 @@ MODEL_RAM_GB = {
     ("cuda", "medium"): 1.2, ("cuda", "small"): 0.6,
     ("cpu", "large-v3-turbo"): 1.8, ("cpu", "large-v3"): 3.0,
     ("cpu", "medium"): 1.5, ("cpu", "small"): 0.8, ("cpu", "base"): 0.4, ("cpu", "tiny"): 0.3,
+    # Apple Silicon: gedeeld geheugen, het model staat dus volledig in het RAM (float16)
+    ("mlx", "large-v3-turbo"): 2.0, ("mlx", "large-v3"): 3.5,
+    ("mlx", "medium"): 1.8, ("mlx", "small"): 0.7,
 }
 RAM_COMFORT_GB = 3.0
 

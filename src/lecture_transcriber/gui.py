@@ -25,7 +25,7 @@ os.environ.setdefault("HF_HUB_VERBOSITY", "error")
 from .config import Course, RunOptions, load_courses, save_course, slugify   # noqa: E402
 from .job import Lesson, group_files, run_lesson            # noqa: E402
 from .output import fmt_dur, fmt_ts                         # noqa: E402
-from .system import Cancelled, FriendlyError, default_threads, resources   # noqa: E402
+from .system import Cancelled, FriendlyError, default_threads, open_folder, resources   # noqa: E402
 from .transcribe import Control                             # noqa: E402
 
 try:
@@ -95,7 +95,7 @@ class App:
 
     def _theme(self):
         fams = set(tk.font.families())
-        base = next((f for f in ("Segoe UI Variable Text", "Segoe UI", "Helvetica") if f in fams), "TkDefaultFont")
+        base = next((f for f in ("Segoe UI Variable Text", "Segoe UI", "SF Pro Text", "Helvetica Neue", "Helvetica") if f in fams), "TkDefaultFont")
         self.font = (base, 10)
         self.font_b = (base, 10, "bold")
         self.font_h = (base, 15, "bold")
@@ -558,7 +558,7 @@ class App:
         sel = self._selected_items() or [it for it in self.items if it.out_dir]
         for it in sel[:1]:
             if it.out_dir and it.out_dir.exists():
-                os.startfile(str(it.out_dir))
+                open_folder(it.out_dir)
 
     # ------------------------------------------------------------------ uitvoeren
 
@@ -809,7 +809,15 @@ def main() -> None:
             ctypes.windll.shcore.SetProcessDpiAwareness(1)
         except Exception:
             pass
-    root = TkinterDnD.Tk() if _DND else tk.Tk()
+    global _DND
+    root = None
+    if _DND:
+        try:
+            root = TkinterDnD.Tk()
+        except Exception:   # bv. tkdnd-bibliotheek niet beschikbaar voor dit platform
+            _DND = False
+    if root is None:
+        root = tk.Tk()
     try:
         App(root)
     except FriendlyError as e:

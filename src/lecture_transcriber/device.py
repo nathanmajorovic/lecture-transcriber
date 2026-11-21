@@ -1,5 +1,8 @@
 """
-Kies het rekentoestel (NVIDIA-GPU via CUDA, anders CPU) en het bijhorende model.
+Kies het rekentoestel en het bijhorende model:
+- Windows/Linux met NVIDIA-GPU: faster-whisper op CUDA;
+- Mac met Apple Silicon: mlx-whisper op de GPU van de Mac (zie mlx_backend.py);
+- anders: faster-whisper op de CPU.
 
 Op Windows zitten cuBLAS en cuDNN in de pip-pakketten nvidia-cublas-cu12 en
 nvidia-cudnn-cu12. Hun DLL-mappen moeten vindbaar zijn *voordat* ctranslate2
@@ -12,6 +15,7 @@ de NVIDIA-kaart. We controleren de naam toch via nvidia-smi en loggen die.
 from __future__ import annotations
 
 import os
+import platform
 import shutil
 import site
 import subprocess
@@ -71,7 +75,7 @@ def nvidia_smi() -> dict | None:
 
 @dataclass
 class DeviceChoice:
-    device: str                  # "cuda" of "cpu"
+    device: str                  # "cuda", "mlx" (Apple Silicon) of "cpu"
     compute_type: str            # bv. "int8_float16" of "int8"
     model: str                   # bv. "large-v3-turbo" of "small"
     beam_size: int
@@ -79,7 +83,7 @@ class DeviceChoice:
     warnings: list[str] = field(default_factory=list)
 
     def describe(self) -> str:
-        where = f"GPU ({self.gpu_name})" if self.device == "cuda" else "CPU"
+        where = f"GPU ({self.gpu_name})" if self.device in ("cuda", "mlx") else "CPU"
         return f"{self.model} op {where}, {self.compute_type}, beam {self.beam_size}"
 
 
@@ -87,6 +91,11 @@ GPU_DEFAULT_MODEL = "large-v3-turbo"
 GPU_COMPUTE = "int8_float16"
 CPU_DEFAULT_MODEL = "small"
 CPU_COMPUTE = "int8"
+MLX_DEFAULT_MODEL = "large-v3-turbo"
+
+
+def is_apple_silicon() -> bool:
+    return sys.platform == "darwin" and platform.machine() == "arm64"
 
 
 def cuda_usable() -> tuple[bool, str]:
@@ -111,7 +120,17 @@ def cuda_usable() -> tuple[bool, str]:
 def choose_device(requested_model: str | None = None, force_cpu: bool = False,
                   beam_size: int | None = None) -> DeviceChoice:
     warnings: list[str] = []
-    if not force_cpu:
+    if not force_cpu and is_apple_silicon():
+        from .mlx_backend import available
+        ok, why = available()
+        if ok:
+            if beam_size and beam_size > 1:
+                warnings.append("mlx-whisper ondersteunt geen beam search: ik gebruik beam 1.")
+            return DeviceChoice("mlx", "float16", requested_model or MLX_DEFAULT_MODEL, 1,
+                                "Apple Silicon, MLX", warnings)
+        warnings.append(f"De GPU van de Mac kan niet gebruikt worden, ik gebruik de CPU "
+                        f"(trager). Reden: {why}. Installeer mlx-whisper met install.sh.")
+    elif not force_cpu and sys.platform != "darwin":
         ok, why = cuda_usable()
         if ok:
             info = nvidia_smi()

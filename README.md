@@ -18,20 +18,34 @@ CPU. The LLM then only gets text, which is far cheaper.
 > **Note on the interface language:** the app's interface is in Dutch. Where this README mentions
 > a button or setting, the Dutch label is shown in *italics*, with a translation where useful.
 
+**Platforms:** Windows 10/11 (tested, NVIDIA GPU or CPU) and macOS (**experimental**: written
+for Apple Silicon and Intel Macs, but not yet tested on real Apple hardware; feedback welcome).
+
 ## Quick start
 
+**Windows**
 ```
 git clone https://github.com/nathanmajorovic/lecture-transcriber.git
 cd lecture-transcriber
 install.bat
 ```
 
-Then start the app via the **Lecture Transcriber** shortcut on your desktop. Drag in a recording
+**macOS**
+```
+git clone https://github.com/nathanmajorovic/lecture-transcriber.git
+cd lecture-transcriber
+./install.sh
+```
+
+Then start the app via the **Lecture Transcriber** shortcut on your desktop (Windows) or by
+double-clicking `start_app.command` (macOS). Drag in a recording
 and its slides PDF, pick the course and click **Start**. Everything is explained in detail below.
 
 ---
 
 ## 1. Installation (one-time)
+
+### Windows
 
 Requirements: Windows 10/11, ±5 GB free disk space, and an internet connection (for installation
 only). An NVIDIA GPU is not required, but makes it roughly 5× faster.
@@ -53,10 +67,47 @@ only). An NVIDIA GPU is not required, but makes it roughly 5× faster.
 
 After that, everything works offline.
 
+### macOS (experimental)
+
+Requirements: macOS 13 or newer, ±5 GB free disk space, an internet connection (for installation
+only) and [Homebrew](https://brew.sh).
+
+1. **Install Homebrew** if you don't have it yet (see [brew.sh](https://brew.sh)).
+2. In Terminal, go to the project folder and run **`./install.sh`**. It:
+   - finds a Python 3.10+ with Tkinter, or installs one with Homebrew (`python@3.12`,
+     `python-tk@3.12`);
+   - installs **ffmpeg** with Homebrew if it is missing;
+   - creates a virtual environment in `~/.venvs/lecture-transcriber`;
+   - installs the Python packages. On **Apple Silicon** (M1/M2/M3/…) this includes
+     **mlx-whisper**, which runs Whisper on the Mac's GPU;
+   - downloads the models (`large-v3-turbo` for mlx-whisper on Apple Silicon, `small` as a CPU
+     fallback).
+3. Start the app by double-clicking **`start_app.command`** in Finder (or `./start_app.command`
+   in Terminal). A Terminal window stays open next to the app, showing its log; closing it
+   closes the app.
+
+How it runs on a Mac:
+
+| Mac | Engine | Model | Speed |
+|---|---|---|---|
+| Apple Silicon (M1 and newer) | mlx-whisper on the Mac's GPU | `large-v3-turbo` | expected to be comparable to a mid-range NVIDIA GPU |
+| Intel Mac | faster-whisper on the CPU | `small` | a few times faster than real time, less accurate |
+
+Good to know:
+- faster-whisper (used on Windows) cannot use the Mac's GPU. That's why Apple Silicon uses a
+  separate engine, mlx-whisper. `info.txt` shows which one was used.
+- mlx-whisper has no beam search: it always decodes greedily (beam 1). Silence is skipped with
+  the same voice activity detection (Silero VAD) as on Windows.
+- On a Mac, the GPU shares the normal RAM. Keep at least 4–5 GB of RAM free.
+- If macOS refuses to open `start_app.command` ("unidentified developer", typically when you
+  downloaded the ZIP instead of using `git clone`): right-click it → *Open* → *Open*. You only
+  need to do this once.
+- If drag and drop doesn't work on your Mac, use *Opnames toevoegen …* (add recordings) instead.
+
 ## 2. Usage
 
 ### With the app window
-Start it via the shortcut or `start_app.bat`.
+Start it via the shortcut or `start_app.bat` (Windows), or `start_app.command` (macOS).
 
 1. **Drag** recordings into the queue (*Wachtrij*), or click *Opnames toevoegen* (add recordings).
    You can add several at once; they are processed one after the other.
@@ -86,7 +137,10 @@ lecture-transcribe.bat recording.mp4 --course ml --clip 20:00 2:00      (test on
 lecture-transcribe.bat --list-courses
 lecture-transcribe.bat --help
 ```
-You can also simply **drag recordings onto `lecture-transcribe.bat`** (no course profile in that
+On macOS, use `./lecture-transcribe.sh` instead of `lecture-transcribe.bat`, with the same
+options.
+
+On Windows, you can also simply **drag recordings onto `lecture-transcribe.bat`** (no course profile in that
 case; the language is detected automatically).
 
 | Option | Meaning |
@@ -95,7 +149,7 @@ case; the language is detected automatically).
 | `--slides` | slides PDF for this lecture |
 | `--language`, `-l` | `nl`, `en`, … or `auto` (default: from the course profile) |
 | `--model`, `-m` | `large-v3-turbo` (default on GPU), `large-v3`, `medium`, `small` |
-| `--beam` | beam size (default 5 on GPU, 1 on CPU) |
+| `--beam` | beam size (default 5 on an NVIDIA GPU, 1 on CPU; always 1 with mlx-whisper on a Mac) |
 | `--cpu` | don't use the GPU |
 | `--chunk-min` | chunk length in minutes (default 20) |
 | `--threads` | CPU threads (default: half of the cores) |
@@ -214,7 +268,7 @@ Measured on an RTX 3050 Ti Laptop GPU (4 GB), on battery:
 
 Roughly 1 minute per 10 minutes of audio, plus ±3 min per hour of video for the slides.
 It's faster with the charger plugged in. CPU only (`small`): ±3× real time, and noticeably less
-accurate.
+accurate. No measurements on a Mac yet (see the macOS section).
 
 The app tries to keep your PC usable:
 - low priority (BELOW_NORMAL), for ffmpeg too;
@@ -232,7 +286,8 @@ The app tries to keep your PC usable:
 
 | Problem | Solution |
 |---|---|
-| "ffmpeg niet gevonden" (ffmpeg not found) | `winget install Gyan.FFmpeg`, then restart the app |
+| "ffmpeg niet gevonden" (ffmpeg not found) | Windows: `winget install Gyan.FFmpeg`; macOS: `brew install ffmpeg`. Then restart the app |
+| (macOS) "De GPU van de Mac kan niet gebruikt worden" (can't use the Mac's GPU) | mlx-whisper is missing or failed to load: rerun `./install.sh`. Only Apple Silicon Macs can use the GPU; Intel Macs always use the CPU |
 | "CUDA werkt niet, ik gebruik de CPU" (CUDA doesn't work, using CPU) | Update your NVIDIA driver (GeForce Experience / nvidia.com), then rerun `install.bat`; its last step tests the GPU |
 | "Weinig geheugen" (low memory) | Quit apps from the system tray (right-click → *Quit*; the X often doesn't really close them), or restart the PC. Disabling apps in *Task Manager → Startup apps* only takes effect after a restart |
 | Wrong language or gibberish in the preview | Cancel and pick the right language (course profile or *Geavanceerd → Taal*). Forcing Dutch on an English lecture produces gibberish, and vice versa |
@@ -246,16 +301,18 @@ The app tries to keep your PC usable:
 
 ```
 lecture-transcriber/
-├─ install.bat, start_app.bat, lecture-transcribe.bat, make_shortcut.ps1
+├─ install.bat, start_app.bat, lecture-transcribe.bat, make_shortcut.ps1   (Windows)
+├─ install.sh, start_app.command, lecture-transcribe.sh                  (macOS)
 ├─ courses.yaml                 course profiles
 ├─ requirements.txt, pyproject.toml
 ├─ src/lecture_transcriber/
 │  ├─ system.py      find ffmpeg, priority, RAM/VRAM/disk/battery
 │  ├─ audio.py       video or audio?, convert to 16 kHz mono WAV, read chunk by chunk
-│  ├─ device.py      GPU/CPU choice, CUDA libraries
+│  ├─ device.py      GPU/CPU choice (CUDA, Apple Silicon or CPU), CUDA libraries
+│  ├─ mlx_backend.py mlx-whisper on Apple Silicon: VAD, batching, timestamps
 │  ├─ config.py      course profiles and settings
 │  ├─ prompt.py      initial prompt (course profile + terms from the PDF)
-│  ├─ transcribe.py  faster-whisper, out-of-memory fallback, language detection, pause
+│  ├─ transcribe.py  faster-whisper / mlx-whisper, out-of-memory fallback, language detection, pause
 │  ├─ job.py         process one lecture, resume, output
 │  ├─ slides/        frames.py, detect.py, match.py
 │  ├─ output.py      all output files

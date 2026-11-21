@@ -1,5 +1,6 @@
 """
-Spraak naar tekst met faster-whisper.
+Spraak naar tekst met faster-whisper (of mlx-whisper op een Mac met Apple Silicon,
+zie mlx_backend.py).
 
 - Het model wordt één keer geladen; bij een fallback wordt het oude eerst vrijgegeven
   (nooit twee modellen tegelijk in het geheugen).
@@ -81,11 +82,30 @@ class Transcriber:
 
     # ------------------------------------------------------------ model beheer
 
+    @property
+    def is_mlx(self) -> bool:
+        return self.choice.device == "mlx"
+
+    def _load_mlx(self) -> None:
+        from .mlx_backend import MlxModel
+        c = self.choice
+        t0 = time.time()
+        try:
+            self.model = MlxModel(c.model, self.emit)
+        except Exception as e:
+            self.emit("warning", text=f"Het model kon niet op de GPU van de Mac geladen worden "
+                                      f"({e}). Ik val terug op de CPU (trager).")
+            self.choice = dev.choose_device(force_cpu=True)
+            return self.load()
+        self.emit("log", text=f"Model geladen in {time.time() - t0:.1f} s: {c.describe()}")
+
     def load(self) -> None:
-        from faster_whisper import WhisperModel
         self.unload()
         c = self.choice
         self.emit("status", text=f"Model laden: {c.describe()} …")
+        if self.is_mlx:
+            return self._load_mlx()
+        from faster_whisper import WhisperModel
         t0 = time.time()
         try:
             try:
@@ -120,6 +140,8 @@ class Transcriber:
 
     def unload(self) -> None:
         if self.model is not None:
+            if hasattr(self.model, "unload"):
+                self.model.unload()
             self.model = None
             gc.collect()
 
@@ -144,12 +166,16 @@ class Transcriber:
     # ------------------------------------------------------------ hulpfuncties
 
     def count_tokens(self, text: str) -> int:
+        if self.is_mlx and self.model is not None:
+            return self.model.count_tokens(text)
         tok = getattr(self.model, "hf_tokenizer", None)
         if tok is None:
             return len(text) // 3 + 1
         return len(tok.encode(" " + text.strip(), add_special_tokens=False).ids)
 
     def is_multi_token(self, word: str) -> bool:
+        if self.is_mlx and self.model is not None:
+            return self.model.is_multi_token(word)
         tok = getattr(self.model, "hf_tokenizer", None)
         if tok is None:
             return len(word) > 8
@@ -162,6 +188,10 @@ class Transcriber:
             if len(clip) < SR * 3:
                 continue
             try:
+                if self.is_mlx:
+                    lang, prob = self.model.detect_language(clip)
+                    votes.append((lang, float(prob)))
+                    continue
                 lang, prob, _ = self.model.detect_language(clip, vad_filter=True)
             except TypeError:  # oudere faster-whisper
                 lang, prob, _ = self.model.detect_language(clip)
@@ -183,6 +213,17 @@ class Transcriber:
                    ) -> list[Segment]:
         """Transcribeer één chunk. Tijden in de uitvoer = offset + tijd in de chunk.
         Bij CUDA-geheugentekort: fallback en de volledige chunk opnieuw."""
+        if self.is_mlx:
+            out_mlx: list[Segment] = []
+            for start, end, text in self.model.transcribe(audio, language, prompt, control.check):
+                text = text.strip()
+                if not text:
+                    continue
+                seg = Segment(offset + start, offset + end, text)
+                out_mlx.append(seg)
+                if on_segment:
+                    on_segment(seg)
+            return out_mlx
         while True:
             out: list[Segment] = []
             try:
